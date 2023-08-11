@@ -3,10 +3,15 @@ require('dotenv').config();
 const axios = require('axios');
 const fs = require('fs').promises;
 const fsSync = require('fs');
+const os = require('os');
 
 const plexAddress = process.env.PLEX_ADDRESS;
 const xPlexToken = process.env.X_PLEX_TOKEN;
-const plexRootFolder = process.env.PLEX_ROOT_FOLDER.replace(/\/$/, ''); // remove trailing slash
+let plexRootFolder = process.env.PLEX_ROOT_FOLDER;
+if(plexRootFolder) {
+	plexRootFolder = plexRootFolder.replace(/\/$/, ''); // remove trailing slash
+}
+
 const fileEndingPattern = process.env.FILE_ENDING_PATTERN;
 
 const jsonOptions = {
@@ -49,7 +54,11 @@ const createFetchImageUrl = (imagePath) => `${plexAddress}${imagePath}?X-Plex-To
         // export every item of a section
         for (const sectionItem of metaData) {
             console.log("-------------- Exporting item " + ++itemCount + " of " + metaData.length + " - " + (Math.floor((itemCount - 1) / metaData.length * 10000) / 100) + "% of this section exported");
-            await fetchSectionItem(sectionItem.ratingKey);
+			try { 			
+				await fetchSectionItem(sectionItem.ratingKey);
+			} catch(error) {
+				console.log(error);
+			}
         }
     }
 }) ();
@@ -190,7 +199,14 @@ async function fetchSeason(ratingKey) {
             for (const episode of children.MediaContainer.Metadata) {
                 const lastEpisodeLocation = await fetchEpisode(episode.ratingKey);
 
-                lastEpisodeParentFolderLocation = plexRootFolder + lastEpisodeLocation.match(/^(.+)\/([^\/]+)$/)[1]; // remove the whole filename and the slash before
+  				const osVersion = os.version();
+				
+				lastEpisodeParentFolderLocation; // remove the whole filename and the slash before	
+				if(osVersion.indexOf('Windows') > -1 ) { 
+				 lastEpisodeParentFolderLocation = plexRootFolder + lastEpisodeLocation.match(/^(.+)\\([^\/]+)$/)[1]; 
+				} else {
+					lastEpisodeParentFolderLocation = plexRootFolder + lastEpisodeLocation.match(/^(.+)\/([^\/]+)$/)[1]; 
+				}
             }
 
             if (lastEpisodeParentFolderLocation !== null) {
